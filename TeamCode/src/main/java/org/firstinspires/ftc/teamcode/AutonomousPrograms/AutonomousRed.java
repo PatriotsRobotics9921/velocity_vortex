@@ -5,8 +5,13 @@ import android.util.Log;
 import com.qualcomm.hardware.modernrobotics.ModernRoboticsI2cGyro;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.hardware.ColorSensor;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DeviceInterfaceModule;
+import com.qualcomm.robotcore.hardware.I2cAddr;
+import com.qualcomm.robotcore.hardware.I2cDevice;
+import com.qualcomm.robotcore.hardware.I2cDeviceSynch;
+import com.qualcomm.robotcore.hardware.I2cDeviceSynchImpl;
 import com.qualcomm.robotcore.hardware.LightSensor;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -54,6 +59,10 @@ public class AutonomousRed extends LinearOpMode {
     ModernRoboticsI2cGyro sensorGyro;
     LightSensor lightSensor;
 
+    byte[] colorCcache;
+    I2cDevice colorC;
+    I2cDeviceSynch colorCreader;
+
     static final double     WHITE_THRESHOLD = 0.19;
     double highPower = 0.70;
     double medPower = 0.20;
@@ -70,7 +79,6 @@ public class AutonomousRed extends LinearOpMode {
     @Override
     public void runOpMode ()  throws InterruptedException
     {
-        /*
         motorBackLeft = hardwareMap.dcMotor.get("motor back left");
         motorBackRight = hardwareMap.dcMotor.get("motor back right");
         motorShootLeft = hardwareMap.dcMotor.get("motor shoot left");
@@ -91,13 +99,17 @@ public class AutonomousRed extends LinearOpMode {
         cdim = hardwareMap.deviceInterfaceModule.get("dim");
         sensorGyro = (ModernRoboticsI2cGyro) hardwareMap.gyroSensor.get("sensor gyro");
         lightSensor = hardwareMap.lightSensor.get("sensor light");
-
+//the below lines set up the configuration file
+        colorC = hardwareMap.i2cDevice.get("cc");
+        colorCreader = new I2cDeviceSynchImpl(colorC, I2cAddr.create8bit(0x3c), false);
+        colorCreader.engage();
         servoClawLeft.setPosition(.20);
         servoClawRight.setPosition(.80);
         servoButtonClick.setPosition(0.23);
 
         sensorSetup();
-        */
+        colorCreader.write8(3, 1); //set led off
+        colorCreader.write8(3, 0); //set led on
 
         //Vuforia setup
         VuforiaLocalizer.Parameters params = new VuforiaLocalizer.Parameters(R.id.cameraMonitorViewId);
@@ -128,86 +140,48 @@ public class AutonomousRed extends LinearOpMode {
 
         while (opModeIsActive())
         {
-
-            /*
             telemetry.addData("Status", "Run Time: " + runtime.toString());
             telemetry.update();
 
             encoderDrive(.2, -7,-7);
-            shootShooters()
+            shootShooters();
             turn(91.0,"left",turnPower,0);
-
-
-
-
-
-            while (opModeIsActive() && wheels.getRawPose() == null)
+            while(opModeIsActive() && wheels.getRawPose() == null)
             {
-                move(0.45,0.45);
+                move(0.8,0.8);
             }
             move(0,0);
-            //anlyze the beacon
+
             VectorF angles = anglesFromTarget(wheels);
             VectorF trans = navOffWall(wheels.getPose().getTranslation(), Math.toDegrees(angles.get(0)) - 90, new VectorF(500,0,0));
-            //Vector carries axis data in this form (x,y,z)
-            //navOffWall last parameter vector is the x, y, and z to be from the wall; 500 = 50mm
-            if (trans.get(0) > 0)//turn right
+
+            double ogTrans = trans.get(2);
+            double scaledPower;
+            //get to 50mm off wall
+            while(opModeIsActive() && trans.get(2) > 0)
             {
-                move(0.2,-0.2);
+                scaledPower = ((ogTrans - trans.get(2)) /(ogTrans));
+                if (scaledPower < 0.2)
+                    scaledPower = 0.2;
+                move(scaledPower,scaledPower);
+                angles = anglesFromTarget(wheels);
+                trans = navOffWall(wheels.getPose().getTranslation(), Math.toDegrees(angles.get(0)) - 90, new VectorF(500,0,0));
             }
-            else //turn left
+            //turn to be perpendicular to wall
+            while (opModeIsActive() && Math.abs(Math.toDegrees(angles.get(0)) - 90) != 90)
             {
-                move(0.2,-0.2);
-            }
-
-            while (opModeIsActive() && Math.abs(trans.get(0)) > 30)
-            {
-                if (wheels.getRawPose() != null)
-                {
-                    trans = navOffWall(wheels.getPose().getTranslation(), Math.toDegrees(angles.get(0)) - 90, new VectorF(500,0,0));
-                }
-            }
-            move(0,0);
-
-            motorBackRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            motorBackLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-
-            motorBackRight.setTargetPosition((int)(motorBackRight.getCurrentPosition() + ((Math.hypot(trans.get(0), trans.get(2) + 150)) / 409.575 * 560)));
-            motorBackLeft.setTargetPosition((int)(motorBackRight.getCurrentPosition() + ((Math.hypot(trans.get(0), trans.get(2) + 150)) / 409.575 * 560)));
-            move(0.3,0.3);
-
-            while (opModeIsActive() && motorBackLeft.isBusy() && motorBackRight.isBusy())
-            {
-                sleep(3000);
+                //Turn left until 90
+                move(-0.24,0.24);
             }
             move(0,0);
-
-            motorBackLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            motorBackLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-
-            while (opModeIsActive() && (wheels.getPose() != null || Math.abs(wheels.getPose().getTranslation().get(0)) > 10))
-            {
-                if (wheels != null)//if we see beacon pic
-                {
-                    if (wheels.getPose().getTranslation().get(0) > 10)//turn to beacon one way
-                    {
-                        move(0.3,-0.3);
-                    }
-                    else //correct turn other way
-                    {
-                        move (-0.3,0.3);
-                    }
-                }
-                else //turn to see it
-                {
-                    move (-0.3,0.3);
-                }
-            }
-            move(0,0);
-            //Look at this link: https://github.com/bchay/ftc_app/tree/master/TeamCode/src/main/java/org/firstinspires/ftc/teamcode
-
-
-        */
+            analyzeBeacon();
+            turn(87,"right",turnPower,0);
+            encoderDrive(1.0,10,10);
+            seeWhiteLine();
+            turn(87,"left",turnPower,0);
+            analyzeBeacon();
+            sleep(30000);
+            //Autonomous finished (sort of)
         }
     }
 
@@ -452,5 +426,21 @@ public class AutonomousRed extends LinearOpMode {
         double thetaY = Math.atan2(-rotation[2][0], Math.sqrt(rotation[2][1] * rotation[2][1] + rotation[2][2] * rotation[2][2]));
         double thetaZ = Math.atan2(rotation[1][0], rotation[0][0]);
         return new VectorF((float)thetaX, (float)thetaY, (float)thetaZ);
+    }
+
+    public void analyzeBeacon()
+    {
+       if ((colorCcache[0] & 0xFF) < 1)
+       {
+           colorCcache = colorCreader.read(0x04, 1);
+           telemetry.addData("Color Number: ", colorCcache[0] & 0xFF);
+           //extend a servo
+       }
+       else
+       {
+           colorCcache = colorCreader.read(0x04, 1);
+           telemetry.addData("Color Number: ", colorCcache[0] & 0xFF);
+           //extend other servo
+       }
     }
 }
