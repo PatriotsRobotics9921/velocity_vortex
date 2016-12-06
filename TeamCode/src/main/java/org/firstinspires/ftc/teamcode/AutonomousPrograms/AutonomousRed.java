@@ -134,7 +134,7 @@ public class AutonomousRed extends LinearOpMode {
             telemetry.update();
 
             encoderDrive(.2, -7,-7);
-            shootShooters();
+            shootShooters()
             turn(91.0,"left",turnPower,0);
 
 
