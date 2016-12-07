@@ -13,6 +13,7 @@ import com.qualcomm.robotcore.hardware.I2cDevice;
 import com.qualcomm.robotcore.hardware.I2cDeviceSynch;
 import com.qualcomm.robotcore.hardware.I2cDeviceSynchImpl;
 import com.qualcomm.robotcore.hardware.LightSensor;
+import com.qualcomm.robotcore.hardware.OpticalDistanceSensor;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
@@ -31,115 +32,124 @@ import org.firstinspires.ftc.robotcore.external.matrices.OpenGLMatrix;
 import org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocalizer;
 import org.firstinspires.ftc.robotcore.external.navigation.VuforiaTrackables;
 import org.firstinspires.ftc.teamcode.R;
-
-
-
 import java.util.Arrays;
 
-@Autonomous(name="Full AAutonomous RED", group="Autonomous")  // @Autonomous(...) is the other common choice
+@Autonomous(name="Autonomous Red - Full", group="Autonomous")
 //@Disabled
 public class AutonomousRed extends LinearOpMode {
 
+    //Timer
     private ElapsedTime runtime = new ElapsedTime();
 
+    //Motors
     DcMotor motorBackRight;
     DcMotor motorBackLeft;
     DcMotor motorShootLeft;
     DcMotor motorShootRight;
     DcMotor motorBelt;
     DcMotor motorCollector;
+    DcMotor motorCollectorHub;
     DcMotor motorLift;
 
-    Servo servoClawLeft;
-    Servo servoClawRight;
+    //Servos
     Servo servoButtonClick;
-    Servo servoClamp;
 
+    //Sensors
     DeviceInterfaceModule cdim;
     ModernRoboticsI2cGyro sensorGyro;
     LightSensor lightSensor;
+    OpticalDistanceSensor sensorOptical;
 
-    byte[] colorCcache;
-    I2cDevice colorC;
-    I2cDeviceSynch colorCreader;
+        //Color Sensor (Beacon)
+        byte[] colorCcache;
+        I2cDevice colorC;
+        I2cDeviceSynch colorCreader;
 
+    //Important Thresholds
     static final double     WHITE_THRESHOLD = 0.19;
-    double highPower = 0.70;
-    double medPower = 0.20;
-    double lowPower = 0.10;
-    double turnPower = 0.28;
-
+    static final double     turnPower = 0.28;
     static final double     COUNTS_PER_MOTOR_REV    = 1220 ;   // eg: ANDYMARK Motor Encoder
     static final double     DRIVE_GEAR_REDUCTION    = 2.0 ;     // This is < 1.0 if geared UP
     static final double     WHEEL_DIAMETER_INCHES   = 4.0 ;     // For figuring circumference
     static final double     COUNTS_PER_INCH         = (COUNTS_PER_MOTOR_REV * DRIVE_GEAR_REDUCTION) / (WHEEL_DIAMETER_INCHES * 3.1415);
     static final double     DRIVE_SPEED             = 0.6;
     static final double     TURN_SPEED              = 0.5;
+    int zAccumulated;  //Total rotation left/right
+    int target = 0;  //Desired angle to turn to
+    //Raw value is between 0 and 1
+    double odsReadingRaw;
+    // odsReadingRaw to the power of (-0.5)
+    static double odsReadingLinear;
+
 
     @Override
     public void runOpMode ()  throws InterruptedException
     {
+        ///////////////////////////////////HARDWARE MAP//////////////////////////////////////////////////
+        //Hardware Map for Motors
         motorBackLeft = hardwareMap.dcMotor.get("motor back left");
         motorBackRight = hardwareMap.dcMotor.get("motor back right");
+
         motorShootLeft = hardwareMap.dcMotor.get("motor shoot left");
         motorShootRight = hardwareMap.dcMotor.get("motor shoot right");
+
         motorBelt = hardwareMap.dcMotor.get("motor belt");
-        motorCollector = hardwareMap.dcMotor.get("motor collector");
         motorLift = hardwareMap.dcMotor.get("motor lift");
+
+        motorCollector = hardwareMap.dcMotor.get("motor collector");
+        motorCollectorHub = hardwareMap.dcMotor.get("motor collector hub");
 
         motorBackLeft.setDirection(DcMotor.Direction.REVERSE);
         motorShootRight.setDirection(DcMotor.Direction.REVERSE);
         motorBelt.setDirection(DcMotor.Direction.REVERSE);
 
-        servoClawLeft = hardwareMap.servo.get("servo claw left");
-        servoClawRight = hardwareMap.servo.get("servo claw right");
+        //Hardware Map for Servos
         servoButtonClick = hardwareMap.servo.get("servo button click");
-        servoClamp = hardwareMap.servo.get("servo clamp");
 
+        //Hardware Map for Sensors
         cdim = hardwareMap.deviceInterfaceModule.get("dim");
         sensorGyro = (ModernRoboticsI2cGyro) hardwareMap.gyroSensor.get("sensor gyro");
         lightSensor = hardwareMap.lightSensor.get("sensor light");
-//the below lines set up the configuration file
+        sensorOptical = hardwareMap.opticalDistanceSensor.get("ods");
         colorC = hardwareMap.i2cDevice.get("cc");
         colorCreader = new I2cDeviceSynchImpl(colorC, I2cAddr.create8bit(0x3c), false);
         colorCreader.engage();
-        servoClawLeft.setPosition(.20);
-        servoClawRight.setPosition(.80);
+        ///////////////////////////////////HARDWARE MAP//////////////////////////////////////////////////
+
+        ///////////////////////////////////INITIALIZE MAP//////////////////////////////////////////////////
+        //Servo Set-Up Initialize
         servoButtonClick.setPosition(0.23);
-
         sensorSetup();
-        colorCreader.write8(3, 1); //set led off
-        colorCreader.write8(3, 0); //set led on
+        ///////////////////////////////////INITIALIZE MAP//////////////////////////////////////////////////
 
-        //Vuforia setup
+        ///////////////////////////////VUFORIA Set-Up//////////////////////////////////////////////////
         VuforiaLocalizer.Parameters params = new VuforiaLocalizer.Parameters(R.id.cameraMonitorViewId);
         params.cameraDirection = VuforiaLocalizer.CameraDirection.BACK;
         params.vuforiaLicenseKey = "AY6rtrH/////AAAAGVWmuhBqk0JTpGx6FODTktFXl6LaoSyhRtq+O84NCurm5LfqvbhYaEq5tEDNLZ9utp4EoD3hyGC938qXyd68xFVepamsJTiZElIwEoTeBF4Bxgk14/y++c1W4oyGOqnVI+DVwBRWbQmqQ4myF5Y2wwXLdo3FjYP+lHvSI0BScISNhkZmJlWhb7PgZfJ+bmTWOg7vbSaZeH+yHoUKBeGBv5w+AlrCSdu2rYgro4Nu5T75IXzFvI0jT17+DLEoZpe/QgpYoAmoBbswfClsVi8rAJay63RS2uHYJ/HHNyXKaAzkVG3S94CWj6zQT5QJKoko2Ox5iyt6GTKXGWwmmzQGzmluGtaidX7YFfCGsUfYpiuw";
         params.cameraMonitorFeedback = VuforiaLocalizer.Parameters.CameraMonitorFeedback.AXES;
-
         VuforiaLocalizer vuforia = ClassFactory.createVuforiaLocalizer(params);
         Vuforia.setHint(HINT.HINT_MAX_SIMULTANEOUS_IMAGE_TARGETS, 4);
-
         VuforiaTrackables beacons = vuforia.loadTrackablesFromAsset("FTC_2016-17");
         beacons.get(0).setName("Wheels");
         beacons.get(1).setName("Tools");
         beacons.get(2).setName("Legos");
         beacons.get(3).setName("Gears");
-
         VuforiaTrackableDefaultListener wheels = (VuforiaTrackableDefaultListener) beacons.get(0).getListener();
-
         beacons.activate();
+        ///////////////////////////////VUFORIA Set-Up//////////////////////////////////////////////////
 
         telemetry.addData("Status", "Initialized");
         telemetry.update();
-        //telemetry.addData("Light Level", lightSensor.getLightDetected());
-        //telemetry.update();
 
         waitForStart();
         runtime.reset();
 
         while (opModeIsActive())
         {
+            //Vuforia Set-Up Variables
+
+
+
             telemetry.addData("Status", "Run Time: " + runtime.toString());
             telemetry.update();
 
@@ -193,9 +203,7 @@ public class AutonomousRed extends LinearOpMode {
         motorBackLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         motorBackRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
-        telemetry.addData("Path0",  "Starting at %7d :%7d",
-                motorBackLeft.getCurrentPosition(),
-                motorBackRight.getCurrentPosition());
+        telemetry.addData("Path0",  "Starting at %7d :%7d", motorBackLeft.getCurrentPosition(), motorBackRight.getCurrentPosition());
         telemetry.update();
     }
 
@@ -253,31 +261,14 @@ public class AutonomousRed extends LinearOpMode {
         motorBelt.setPower(0);
     }
 
-    /*
-        public void wallDetection()
-        {
-
-            while (ultraThugga.getUltrasonicLevel() > 12)
-            {
-                move(medPower,medPower);
-                telemetry.addData("Ultrasonic", ultraThugga.getUltrasonicLevel());
-                waitForNextHardwareCycle();
-            }
-
-            move(0,0);
-        }
-        */
     public void sensorSetup()
     {
-        lightSensor.enableLed(true);
+        colorCreader.write8(3, 1); //set led off
+        colorCreader.write8(3, 0); //set led on
+        colorCreader.write8(3, 1); //set led off
 
-        telemetry.addData(">", "Gyro Calibrating. Do not move!");
-        telemetry.update();
-        sensorGyro.calibrate();
-        sleep(500);
-        telemetry.update();
-        telemetry.addData("Text", "Sensors Ready");
-        telemetry.update();
+        lightSensor.enableLed(true);
+        gyroSetUp();
     }
 
 
@@ -311,43 +302,6 @@ public class AutonomousRed extends LinearOpMode {
         motorBackRight.setPower(powerRight);
         motorBackLeft.setPower(powerLeft);
     }
-
-    /*public void turnRight(int Degrees)
-    {
-        motorBackLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        motorBackRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-
-        sensorGyro.resetZAxisIntegrator();
-        sleep(500);
-
-        while (Math.abs(sensorGyro.getIntegratedZValue()) < Degrees)
-        {
-            move(turnPower, -turnPower);
-            telemetry.addData("Heading Degrees : ", sensorGyro.getIntegratedZValue());
-            telemetry.addData("Direction : ", "Turning Right");
-            waitForNextHardwareCycle();
-        }
-        move(0,0);
-        telemetry.addData("Finished!", "Turning point reached");
-        sleep(1000);
-    }
-
-    public void turnLeft(int Degrees)
-    {
-        sensorGyro.resetZAxisIntegrator();
-        sleep(500);
-
-        while (Math.abs(sensorGyro.getIntegratedZValue()) < Degrees)
-        {
-            move(-turnPower, turnPower);
-            telemetry.addData("Heading Degrees : ", sensorGyro.getIntegratedZValue());
-            telemetry.addData("Direction : ", "Turning Left");
-            waitForNextHardwareCycle();
-        }
-        move(0,0);
-        telemetry.addData("Finished!", "Turning point reached");
-        sleep(1000);
-    }*/
 
     public void timedMove(double power, int milliseconds)
     {
@@ -430,17 +384,110 @@ public class AutonomousRed extends LinearOpMode {
 
     public void analyzeBeacon()
     {
-       if ((colorCcache[0] & 0xFF) < 1)
+       if ((colorCcache[0] & 0xFF) > 7 && (colorCcache[0] & 0xFF) < 13) //IF RED
        {
            colorCcache = colorCreader.read(0x04, 1);
            telemetry.addData("Color Number: ", colorCcache[0] & 0xFF);
            //extend a servo
        }
-       else
+       else   //BLUE
        {
            colorCcache = colorCreader.read(0x04, 1);
            telemetry.addData("Color Number: ", colorCcache[0] & 0xFF);
            //extend other servo
        }
+    }
+
+    public void driveStraight(int duration, double power) {
+        double leftSpeed; //Power to feed the motors
+        double rightSpeed;
+
+        double target = sensorGyro.getIntegratedZValue();  //Starting direction
+        double startPosition = motorBackLeft.getCurrentPosition();  //Starting position
+
+        while (motorBackLeft.getCurrentPosition() < duration + startPosition && opModeIsActive()) {  //While we have not passed out intended distance
+            zAccumulated = sensorGyro.getIntegratedZValue();  //Current direction
+
+            leftSpeed = power + (zAccumulated - target) / 100;  //Calculate speed for each side
+            rightSpeed = power - (zAccumulated - target) / 100;  //See Gyro Straight video for detailed explanation
+
+            leftSpeed = Range.clip(leftSpeed, -1, 1);
+            rightSpeed = Range.clip(rightSpeed, -1, 1);
+
+            motorBackLeft.setPower(leftSpeed);
+            motorBackRight.setPower(rightSpeed);
+
+            telemetry.addData("1. Left", motorBackLeft.getPower());
+            telemetry.addData("2. Right", motorBackRight.getPower());
+            telemetry.addData("3. Distance to go", duration + startPosition - motorBackLeft.getCurrentPosition());
+            telemetry.update();
+        }
+
+        motorBackLeft.setPower(0);
+        motorBackRight.setPower(0);
+    }
+
+    //This function turns a number of degrees compared to where the robot is. Positive numbers trn left.
+    public void turn(int target)  {
+        turnAbsolute(target + sensorGyro.getIntegratedZValue());
+    }
+
+    //This function turns a number of degrees compared to where the robot was when the program started. Positive numbers trn left.
+    public void turnAbsolute(int target) {
+        zAccumulated = sensorGyro.getIntegratedZValue();  //Set variables to gyro readings
+        double turnSpeed = 0.15;
+
+        while (Math.abs(zAccumulated - target) > 3) {  //Continue while the robot direction is further than three degrees from the target
+            if (zAccumulated > target) {  //if gyro is positive, we will turn right
+                motorBackLeft.setPower(turnSpeed);
+                motorBackRight.setPower(-turnSpeed);
+            }
+
+            if (zAccumulated < target) {  //if gyro is positive, we will turn left
+                motorBackLeft.setPower(-turnSpeed);
+                motorBackRight.setPower(turnSpeed);
+            }
+
+            zAccumulated = sensorGyro.getIntegratedZValue();  //Set variables to gyro readings
+            telemetry.addData("accu", String.format("%03d", zAccumulated));
+            telemetry.update();
+        }
+
+        motorBackLeft.setPower(0);  //Stop the motors
+        motorBackRight.setPower(0);
+
+    }
+
+    public void gyroSetUp()
+    {
+        // start calibrating the gyro.
+        telemetry.addData(">", "Gyro Calibrating. Do Not move!");
+        telemetry.update();
+        sensorGyro.calibrate();
+
+        // make sure the gyro is calibrated.
+        while (!isStopRequested() && sensorGyro.isCalibrating())  {
+            sleep(50);
+            idle();
+        }
+
+        telemetry.addData(">", "Gyro Calibrated.  Press Start.");
+        telemetry.update();
+    }
+    public void wallFollowWhiteLine()
+    {
+        while(lightSensor.getLightDetected() < WHITE_THRESHOLD) {
+            odsReadingRaw = sensorOptical.getRawLightDetected() / 5;                   //update raw value (This function now returns a value between 0 and 5 instead of 0 and 1 as seen in the video)
+            odsReadingLinear = Math.pow(odsReadingRaw, 0.5);                //calculate linear value
+
+            motorBackLeft.setPower(odsReadingLinear * 2);
+            motorBackRight.setPower(0.5 - (odsReadingLinear * 2));
+
+            telemetry.addData("0 ODS Raw", odsReadingRaw);
+            telemetry.addData("1 ODS linear", odsReadingLinear);
+            telemetry.addData("2 Motor Left", motorBackLeft.getPower());
+            telemetry.addData("3 Motor Right", motorBackRight.getPower());
+            telemetry.update();
+        }
     }
 }
