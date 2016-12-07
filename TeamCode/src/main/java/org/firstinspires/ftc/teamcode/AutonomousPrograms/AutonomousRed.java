@@ -138,6 +138,11 @@ public class AutonomousRed extends LinearOpMode {
         beacons.activate();
         ///////////////////////////////VUFORIA Set-Up//////////////////////////////////////////////////
 
+
+
+        /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////MAIN AUTONOMOUS CODE END//////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
         telemetry.addData("Status", "Initialized");
         telemetry.update();
 
@@ -195,6 +200,15 @@ public class AutonomousRed extends LinearOpMode {
         }
     }
 
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////MAIN AUTONOMOUS CODE END//////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////ENCODER FUNCTIONS/////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
     public void driveEncoders()
     {
         motorBackLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -250,16 +264,13 @@ public class AutonomousRed extends LinearOpMode {
         }
     }
 
-    public void shootShooters()
-    {
-        motorShootLeft.setPower(-1);
-        motorShootRight.setPower(-1);
-        motorBelt.setPower(-1);
-        sleep(3000);
-        motorShootLeft.setPower(0);
-        motorShootRight.setPower(0);
-        motorBelt.setPower(0);
-    }
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////ENCODER FUNCTIONS/////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////SENSORS //////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
     public void sensorSetup()
     {
@@ -270,7 +281,6 @@ public class AutonomousRed extends LinearOpMode {
         lightSensor.enableLed(true);
         gyroSetUp();
     }
-
 
     public void seeWhiteLine()
     {
@@ -310,63 +320,46 @@ public class AutonomousRed extends LinearOpMode {
         move(0,0);
     }
 
-    private void turn(double degrees, String direction, double maxSpeed, int count)
+
+    public void wallFollowWhiteLine()
     {
-        if (!opModeIsActive()) return;
-        if (direction.equals("right")) degrees *= -1; //Negative degree for turning right
-        double targetHeading = sensorGyro.getIntegratedZValue() + degrees;
+        while(lightSensor.getLightDetected() < WHITE_THRESHOLD) {
+            odsReadingRaw = sensorOptical.getRawLightDetected() / 5;                   //update raw value (This function now returns a value between 0 and 5 instead of 0 and 1 as seen in the video)
+            odsReadingLinear = Math.pow(odsReadingRaw, 0.5);                //calculate linear value
 
-        //Change mode because turn() uses motor power and not motor position
-        motorBackLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        motorBackRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            motorBackLeft.setPower(odsReadingLinear * 2);
+            motorBackRight.setPower(0.5 - (odsReadingLinear * 2));
 
-        if (degrees < 0)//right
-        {
-            while (sensorGyro.getIntegratedZValue() > targetHeading && opModeIsActive())
-            {
-                motorBackLeft.setPower(Range.clip(maxSpeed * (Math.abs(sensorGyro.getIntegratedZValue() - targetHeading) / Math.abs(degrees)), .01, maxSpeed));
-                motorBackRight.setPower(Range.clip(-maxSpeed * (Math.abs(sensorGyro.getIntegratedZValue() - targetHeading) / Math.abs(degrees)), -maxSpeed, -.01));
-
-                telemetry.addData("Distance to turn: ", Math.abs(sensorGyro.getIntegratedZValue() - targetHeading));
-                telemetry.addData("Target", targetHeading);
-                telemetry.addData("Heading", sensorGyro.getIntegratedZValue());
-                telemetry.addData("Original Speed", maxSpeed * (Math.abs(sensorGyro.getIntegratedZValue() - targetHeading) / Math.abs(degrees)));
-                telemetry.addData("Speed", Range.clip(maxSpeed * (Math.abs(sensorGyro.getIntegratedZValue() - targetHeading) / Math.abs(degrees)), .01, maxSpeed));
-
-                telemetry.update();
-            }
+            telemetry.addData("0 ODS Raw", odsReadingRaw);
+            telemetry.addData("1 ODS linear", odsReadingLinear);
+            telemetry.addData("2 Motor Left", motorBackLeft.getPower());
+            telemetry.addData("3 Motor Right", motorBackRight.getPower());
+            telemetry.update();
         }
-        else //Left
+    }
+    public void analyzeBeacon()
+    {
+        if ((colorCcache[0] & 0xFF) > 7 && (colorCcache[0] & 0xFF) < 13) //IF RED
         {
-            while (sensorGyro.getIntegratedZValue() < targetHeading && opModeIsActive())
-            {
-                motorBackLeft.setPower(Range.clip(-maxSpeed * (Math.abs(sensorGyro.getIntegratedZValue() - targetHeading) / Math.abs(degrees)), -maxSpeed, -.01));
-                motorBackRight.setPower(Range.clip(maxSpeed * (Math.abs(sensorGyro.getIntegratedZValue() - targetHeading) / Math.abs(degrees)), .01, maxSpeed));
-
-                telemetry.addData("Distance to turn: ", Math.abs(sensorGyro.getIntegratedZValue() - targetHeading));
-                telemetry.addData("Target", targetHeading);
-                telemetry.addData("Heading", sensorGyro.getIntegratedZValue());
-                telemetry.addData("Speed", Range.clip(maxSpeed * (Math.abs(sensorGyro.getIntegratedZValue() - targetHeading) / Math.abs(degrees)), .01, maxSpeed));
-
-                telemetry.update();
-            }
+            colorCcache = colorCreader.read(0x04, 1);
+            telemetry.addData("Color Number: ", colorCcache[0] & 0xFF);
+            //extend a servo
         }
-
-        motorBackLeft.setPower(0);
-        motorBackRight.setPower(0);
-        sleep(200);
-
-        telemetry.addData("Distance to turn", Math.abs(sensorGyro.getIntegratedZValue() - targetHeading));
-        telemetry.addData("Direction", -1 * (int) Math.signum(degrees));
-        telemetry.update();
-
-        if(Math.abs(sensorGyro.getIntegratedZValue() - targetHeading) > 0 && count < 1)
+        else   //BLUE
         {
-            //Recurse to correct turn
-            turn(Math.abs(sensorGyro.getIntegratedZValue() - targetHeading), direction.equals("right") ? "left" : "right", .08, ++count);
+            colorCcache = colorCreader.read(0x04, 1);
+            telemetry.addData("Color Number: ", colorCcache[0] & 0xFF);
+            //extend other servo
         }
     }
 
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+   //////////////////////////////////////////////////////SENSORS //////////////////////////////////////////////////////////////////////////
+   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////VUFORIA///////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
     public VectorF navOffWall(VectorF trans, double robotAngle, VectorF offWall)
     {
         return new VectorF((float) (trans.get(0) - offWall.get(0) * Math.sin(Math.toRadians(robotAngle)) - offWall.get(2) * Math.cos(Math.toRadians(robotAngle))), trans.get(1), (float) (trans.get(2) + offWall.get(0) * Math.cos(Math.toRadians(robotAngle)) - offWall.get(2) * Math.sin(Math.toRadians(robotAngle))));
@@ -382,23 +375,15 @@ public class AutonomousRed extends LinearOpMode {
         return new VectorF((float)thetaX, (float)thetaY, (float)thetaZ);
     }
 
-    public void analyzeBeacon()
-    {
-       if ((colorCcache[0] & 0xFF) > 7 && (colorCcache[0] & 0xFF) < 13) //IF RED
-       {
-           colorCcache = colorCreader.read(0x04, 1);
-           telemetry.addData("Color Number: ", colorCcache[0] & 0xFF);
-           //extend a servo
-       }
-       else   //BLUE
-       {
-           colorCcache = colorCreader.read(0x04, 1);
-           telemetry.addData("Color Number: ", colorCcache[0] & 0xFF);
-           //extend other servo
-       }
-    }
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////VUFORIA///////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-    public void driveStraight(int duration, double power) {
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////GYRO FUNCTIONS////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+    public void driveStraightGyro(int duration, double power) {
         double leftSpeed; //Power to feed the motors
         double rightSpeed;
 
@@ -474,20 +459,84 @@ public class AutonomousRed extends LinearOpMode {
         telemetry.addData(">", "Gyro Calibrated.  Press Start.");
         telemetry.update();
     }
-    public void wallFollowWhiteLine()
+
+    private void turn(double degrees, String direction, double maxSpeed, int count)
     {
-        while(lightSensor.getLightDetected() < WHITE_THRESHOLD) {
-            odsReadingRaw = sensorOptical.getRawLightDetected() / 5;                   //update raw value (This function now returns a value between 0 and 5 instead of 0 and 1 as seen in the video)
-            odsReadingLinear = Math.pow(odsReadingRaw, 0.5);                //calculate linear value
+        if (!opModeIsActive()) return;
+        if (direction.equals("right")) degrees *= -1; //Negative degree for turning right
+        double targetHeading = sensorGyro.getIntegratedZValue() + degrees;
 
-            motorBackLeft.setPower(odsReadingLinear * 2);
-            motorBackRight.setPower(0.5 - (odsReadingLinear * 2));
+        //Change mode because turn() uses motor power and not motor position
+        motorBackLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        motorBackRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
-            telemetry.addData("0 ODS Raw", odsReadingRaw);
-            telemetry.addData("1 ODS linear", odsReadingLinear);
-            telemetry.addData("2 Motor Left", motorBackLeft.getPower());
-            telemetry.addData("3 Motor Right", motorBackRight.getPower());
-            telemetry.update();
+        if (degrees < 0)//right
+        {
+            while (sensorGyro.getIntegratedZValue() > targetHeading && opModeIsActive())
+            {
+                motorBackLeft.setPower(Range.clip(maxSpeed * (Math.abs(sensorGyro.getIntegratedZValue() - targetHeading) / Math.abs(degrees)), .01, maxSpeed));
+                motorBackRight.setPower(Range.clip(-maxSpeed * (Math.abs(sensorGyro.getIntegratedZValue() - targetHeading) / Math.abs(degrees)), -maxSpeed, -.01));
+
+                telemetry.addData("Distance to turn: ", Math.abs(sensorGyro.getIntegratedZValue() - targetHeading));
+                telemetry.addData("Target", targetHeading);
+                telemetry.addData("Heading", sensorGyro.getIntegratedZValue());
+                telemetry.addData("Original Speed", maxSpeed * (Math.abs(sensorGyro.getIntegratedZValue() - targetHeading) / Math.abs(degrees)));
+                telemetry.addData("Speed", Range.clip(maxSpeed * (Math.abs(sensorGyro.getIntegratedZValue() - targetHeading) / Math.abs(degrees)), .01, maxSpeed));
+
+                telemetry.update();
+            }
+        }
+        else //Left
+        {
+            while (sensorGyro.getIntegratedZValue() < targetHeading && opModeIsActive())
+            {
+                motorBackLeft.setPower(Range.clip(-maxSpeed * (Math.abs(sensorGyro.getIntegratedZValue() - targetHeading) / Math.abs(degrees)), -maxSpeed, -.01));
+                motorBackRight.setPower(Range.clip(maxSpeed * (Math.abs(sensorGyro.getIntegratedZValue() - targetHeading) / Math.abs(degrees)), .01, maxSpeed));
+
+                telemetry.addData("Distance to turn: ", Math.abs(sensorGyro.getIntegratedZValue() - targetHeading));
+                telemetry.addData("Target", targetHeading);
+                telemetry.addData("Heading", sensorGyro.getIntegratedZValue());
+                telemetry.addData("Speed", Range.clip(maxSpeed * (Math.abs(sensorGyro.getIntegratedZValue() - targetHeading) / Math.abs(degrees)), .01, maxSpeed));
+
+                telemetry.update();
+            }
+        }
+
+        motorBackLeft.setPower(0);
+        motorBackRight.setPower(0);
+        sleep(200);
+
+        telemetry.addData("Distance to turn", Math.abs(sensorGyro.getIntegratedZValue() - targetHeading));
+        telemetry.addData("Direction", -1 * (int) Math.signum(degrees));
+        telemetry.update();
+
+        if(Math.abs(sensorGyro.getIntegratedZValue() - targetHeading) > 0 && count < 1)
+        {
+            //Recurse to correct turn
+            turn(Math.abs(sensorGyro.getIntegratedZValue() - targetHeading), direction.equals("right") ? "left" : "right", .08, ++count);
         }
     }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////GYRO FUNCTIONS////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////OTHER FUNCTIONS////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+    public void shootShooters()
+    {
+        motorShootLeft.setPower(-1);
+        motorShootRight.setPower(-1);
+        motorBelt.setPower(-1);
+        sleep(3000);
+        motorShootLeft.setPower(0);
+        motorShootRight.setPower(0);
+        motorBelt.setPower(0);
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////OTHER FUNCTIONS////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 }
