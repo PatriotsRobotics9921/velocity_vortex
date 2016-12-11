@@ -55,8 +55,6 @@ public class MRI_Color_Sensor extends OpMode {
         colorC = hardwareMap.i2cDevice.get("cc");
         colorCreader = new I2cDeviceSynchImpl(colorC, I2cAddr.create8bit(0x3c), false);
         colorCreader.engage();
-
-        touch = hardwareMap.touchSensor.get("t");
     }
 
     /*
@@ -64,6 +62,8 @@ public class MRI_Color_Sensor extends OpMode {
      */
     @Override
     public void init_loop() {
+        colorCreader.write8(3, 1); //set led off
+
     }
 
     /*
@@ -72,42 +72,12 @@ public class MRI_Color_Sensor extends OpMode {
     @Override
     public void start() {
         runtime.reset();
-
-        if(LEDState){
-            colorCreader.write8(3, 0);    //Set the mode of the color sensor using LEDState
-        }
-        else{
-            colorCreader.write8(3, 1);    //Set the mode of the color sensor using LEDState
-        }
-        //Active - For measuring reflected light. Cancels out ambient light
-        //Passive - For measuring ambient light, eg. the FTC Color Beacon
     }
 
-    /*
-     * Code to run REPEATEDLY after the driver hits PLAY but before they hit STOP
-     */
+
     @Override
     public void loop() {
         telemetry.addData("Status", "Running: " + runtime.toString());
-
-        //The below two if() statements ensure that the mode of the color sensor is changed only once each time the touch sensor is pressed.
-        //The mode of the color sensor is saved to the sensor's long term memory. Just like flash drives, the long term memory has a life time in the 10s or 100s of thousands of cycles.
-        //This seems like a lot but if your program wrote to the long term memory every time though the main loop, it would shorten the life of your sensor.
-
-        if (!touchState && touch.isPressed()) {  //If the touch sensor is just now being pressed (was not pressed last time through the loop but now is)
-            touchState = true;                   //Change touch state to true because the touch sensor is now pressed
-            LEDState = !LEDState;                //Change the LEDState to the opposite of what it was
-            if(LEDState){
-                colorCreader.write8(3, 0);    //Set the mode of the color sensor using LEDState
-            }
-            else{
-                colorCreader.write8(3, 1);    //Set the mode of the color sensor using LEDState
-            }
-
-        }
-        if (!touch.isPressed()) {                //If the touch sensor is now pressed
-            touchState = false;                  //Set the touchState to false to indicate that the touch sensor was released
-        }
 
         colorCcache = colorCreader.read(0x04, 1);
 
