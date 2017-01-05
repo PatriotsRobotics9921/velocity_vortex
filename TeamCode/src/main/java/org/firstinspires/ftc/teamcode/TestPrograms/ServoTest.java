@@ -1,14 +1,13 @@
 
-package org.firstinspires.ftc.teamcode.tests;
+package org.firstinspires.ftc.teamcode.TestPrograms;
 
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.Range;
 
 
-@TeleOp(name = "Servo Test", group = "Tests")
+@TeleOp(name = "Servo Position Acquirement", group = "Tests")
 //@Disabled
 public class ServoTest extends OpMode {
 

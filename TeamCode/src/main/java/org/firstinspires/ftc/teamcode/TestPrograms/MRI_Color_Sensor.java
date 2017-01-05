@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.TestPrograms;
 
 /*
 Modern Robotics Color Sensor Example with color number
@@ -26,7 +26,7 @@ import com.qualcomm.robotcore.hardware.TouchSensor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 
-@TeleOp(name = "Color Sensor", group = "MRI")
+@TeleOp(name = "MR Color Sensor Vision", group = "Tests")
 // @Autonomous(...) is the other common choice
 //@Disabled
 public class MRI_Color_Sensor extends OpMode {

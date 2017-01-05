@@ -17,7 +17,7 @@ or http://modernroboticsinc.com/Content/Images/uploaded/Sensors/Sensor%20Documen
 Support is available by emailing support@modernroboticsinc.com.
 */
 
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.TestPrograms;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
@@ -29,7 +29,7 @@ import com.qualcomm.robotcore.hardware.I2cDeviceSynchImpl;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 @TeleOp(name="Color Calibration", group="MRI")
-//@Disabled
+@Disabled
 public class MRI_Color_Sensor_Calibration extends LinearOpMode {
 
     private ElapsedTime runtime = new ElapsedTime();

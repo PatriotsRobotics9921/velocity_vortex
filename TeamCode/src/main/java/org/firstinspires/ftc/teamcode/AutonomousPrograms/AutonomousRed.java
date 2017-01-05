@@ -34,7 +34,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.VuforiaTrackables;
 import org.firstinspires.ftc.teamcode.R;
 import java.util.Arrays;
 
-@Autonomous(name="Autonomous Red - Full", group="Autonomous")
+@Autonomous(name="Autonomous Red ", group="Autonomous")
 //@Disabled
 public class AutonomousRed extends LinearOpMode {
 
