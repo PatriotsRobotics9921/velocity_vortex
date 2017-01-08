@@ -15,7 +15,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
-@TeleOp(name="Future Hendrix Op Mode", group="Tele-Operations")
+@TeleOp(name="Mr. Future Hendrix Tele-Op", group="Tele-Operations")
 //@Disabled
 public class ManualOpNew extends OpMode
 {
@@ -32,11 +32,14 @@ public class ManualOpNew extends OpMode
     DcMotor motorLift;
 
     //Servos
-    Servo servoButtonClick;
-    Servo servoExtendCollectionLeft;
-    Servo servoExtendCollectionRight;
+    //Servo servoButtonClick;
+    //Servo servoExtendCollectionLeft;
+    //Servo servoExtendCollectionRight;
     Servo servoLiftGate;
     Servo servoLiftAngle;
+    Servo servoButtonLeft;
+    Servo servoButtonRight;
+
 
     //Important Thresholds
     static final double     WHITE_THRESHOLD = 0.19;
@@ -68,19 +71,19 @@ public class ManualOpNew extends OpMode
         motorBackRight.setDirection(DcMotor.Direction.REVERSE);
         motorShootLeft.setDirection(DcMotor.Direction.REVERSE);
         motorBelt.setDirection(DcMotor.Direction.REVERSE);
-        motorCollector.setDirection(DcMotor.Direction.REVERSE);
 
-        servoButtonClick = hardwareMap.servo.get("servo button click");
-        servoExtendCollectionLeft = hardwareMap.servo.get("servo exl");
-        servoExtendCollectionRight =hardwareMap.servo.get("servo exr");
+        servoButtonLeft = hardwareMap.servo.get("servo button left");
+        servoButtonRight = hardwareMap.servo.get("servo button right");
+        //servoExtendCollectionLeft = hardwareMap.servo.get("servo exl");
+        //servoExtendCollectionRight =hardwareMap.servo.get("servo exr");
         servoLiftAngle = hardwareMap.servo.get("servo lift angle");
         servoLiftGate = hardwareMap.servo.get("servo lift gate");
 
-        servoButtonClick.setPosition(0.43);
+        servoButtonLeft.setPosition(0.53);
+        servoButtonRight.setPosition(0.33);
         servoLiftGate.setPosition(0.36);
-        servoLiftAngle.setPosition(0.52);
-        servoExtendCollectionLeft.setPosition(0.40);
-        servoExtendCollectionRight.setPosition(0.60);
+        servoLiftAngle.setPosition(0.25);
+
     }
 
     @Override
@@ -102,8 +105,8 @@ public class ManualOpNew extends OpMode
         right = (float)(scaleInput(right));
         left =  (float)scaleInput(left);
 
-        motorBackLeft.setPower(left);
-        motorBackRight.setPower(right);
+       motorBackLeft.setPower(left);
+       motorBackRight.setPower(right);
 
         if (gamepad1.a)
         {
@@ -113,6 +116,7 @@ public class ManualOpNew extends OpMode
         {
             motorBelt.setPower(1.0);
         }
+
         if (gamepad1.x)
         {
             motorShootLeft.setPower(0);
@@ -123,6 +127,7 @@ public class ManualOpNew extends OpMode
             motorShootLeft.setPower(1);
             motorShootRight.setPower(1);
         }
+
         if (gamepad2.a)
         {
             motorCollector.setPower(0);
@@ -146,52 +151,36 @@ public class ManualOpNew extends OpMode
 
         }
 
-        if (gamepad2.left_bumper)
+        if (gamepad2.left_bumper)//init
         {
-            servoButtonClick.setPosition(0.20);
+            servoButtonRight.setPosition(0.33);
+            servoButtonLeft.setPosition(0.53);
         }
-        else if (gamepad2.right_bumper)
+        else if (gamepad2.right_bumper)//hit
         {
-            servoButtonClick.setPosition(0.70);
-        }
-        else
-        {
-            servoButtonClick.setPosition(0.43);
+            servoButtonRight.setPosition(0.76);
+            servoButtonLeft.setPosition(0.10);
         }
 
-        if(gamepad2.dpad_left)
-        {
-            servoExtendCollectionLeft.setPosition(0.40);
-            servoExtendCollectionRight.setPosition(0.60);
-        }
-        if(gamepad2.dpad_up)
-        {
-            servoExtendCollectionLeft.setPosition(0.50);
-            servoExtendCollectionRight.setPosition(0.50);
-
-        }
-        if(gamepad2.dpad_right)
-        {
-            servoExtendCollectionLeft.setPosition(1.00);
-            servoExtendCollectionRight.setPosition(0.00);
-        }
 
         if(gamepad1.dpad_up)
         {
-            servoLiftAngle.setPosition(0.52);
+            servoLiftAngle.setPosition(0.25);
         }
         if(gamepad1.dpad_down)
         {
-            servoLiftAngle.setPosition(0.00);
+            servoLiftAngle.setPosition(0.40);
         }
 
         if(gamepad1.dpad_left)
         {
             servoLiftGate.setPosition(0.36);
+
         }
         if(gamepad1.dpad_right)
         {
-            servoLiftGate.setPosition(0.73);
+            servoLiftGate.setPosition(1);
+
         }
     }
 

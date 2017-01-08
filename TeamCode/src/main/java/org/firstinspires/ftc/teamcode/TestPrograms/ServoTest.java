@@ -7,7 +7,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.Range;
 
 
-@TeleOp(name = "Servo Position Acquirement", group = "Tests")
+@TeleOp(name = "Servo Position Test", group = "Tests")
 //@Disabled
 public class ServoTest extends OpMode {
 

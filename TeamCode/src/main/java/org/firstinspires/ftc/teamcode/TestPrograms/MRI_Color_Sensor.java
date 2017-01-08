@@ -26,7 +26,7 @@ import com.qualcomm.robotcore.hardware.TouchSensor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 
-@TeleOp(name = "MR Color Sensor Vision", group = "Tests")
+@TeleOp(name = "Color Sensor Test", group = "Tests")
 // @Autonomous(...) is the other common choice
 //@Disabled
 public class MRI_Color_Sensor extends OpMode {

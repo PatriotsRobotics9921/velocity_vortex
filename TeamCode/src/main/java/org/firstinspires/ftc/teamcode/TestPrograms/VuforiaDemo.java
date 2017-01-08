@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.TestPrograms;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.vuforia.HINT;
@@ -24,6 +25,7 @@ import org.firstinspires.ftc.teamcode.R;
  */
 
 @TeleOp(name = "Vuforia Viewer", group="Tests")
+@Disabled
 
 public class VuforiaDemo extends LinearOpMode
 {
