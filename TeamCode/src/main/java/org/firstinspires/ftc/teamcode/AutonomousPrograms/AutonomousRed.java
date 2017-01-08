@@ -26,7 +26,7 @@ public class AutonomousRed extends LinearOpMode {
     //Timer
     private ElapsedTime runtime = new ElapsedTime();
 
-    //Motors
+    //Motors //future
     DcMotor motorBackRight;
     DcMotor motorBackLeft;
     DcMotor motorShootLeft;
