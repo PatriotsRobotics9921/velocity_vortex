@@ -53,7 +53,7 @@ public class AutonomousRed extends LinearOpMode {
         I2cDeviceSynch colorCreader;
 
     //Important Thresholds
-    static final double     WHITE_THRESHOLD = 0.49;
+    static final double     WHITE_THRESHOLD = 0.39;
     double     prevValLight = 0.00;
     static final double     turnPower = 0.28;
     static final double     COUNTS_PER_MOTOR_REV    = 1220 ;   // eg: ANDYMARK Motor Encoder
@@ -117,7 +117,7 @@ public class AutonomousRed extends LinearOpMode {
 
         waitForStart();
         runtime.reset();
-
+        //&& opModeIsActive
         while (opModeIsActive())
         {
             telemetry.addData("Status", "Run Time: " + runtime.toString());
@@ -127,25 +127,18 @@ public class AutonomousRed extends LinearOpMode {
             telemetry.addData("Color Number: ", colorCcache[0] & 0xFF);
             telemetry.update();
 
-            //encoderDrive(0.3, 1, 1);
-            //turn(44.0,"left",turnPower,0);
+            encoderDrive(0.3, 1, 1);
+            turn(46.0,"left",turnPower,0);
             encoderDrive(0.4, 10, 10);
-            //seeWhiteLine();
-            //encoderDrive(0.2, -0.5, -0.5);
-
-            /*turn(49.5,"left",turnPower,0);
-            encoderDrive(0.2, 2,2);
-            analyzeBeacon();
-            encoderDrive(0.5, -7,-7);
-            shootShooters();
-            turn(40.0,"right",turnPower,0);
             seeWhiteLine();
-            encoderDrive(0.5, -0.5, -0.5);
+            encoderDrive(0.1, -0.5, -0.5);
             turn(49.5,"left",turnPower,0);
-            encoderDrive(0.2, 2,2);
+            timedMove(0.3, 300);
+            //encoderDrive(0.1, 3,3);
+            sleep(500);
             analyzeBeacon();
-            sleep(9921);
-            */
+            encoderDrive(0.5, -10,-10);
+            shootShooters();
             sleep(100000);
         }
     }
@@ -240,9 +233,8 @@ public class AutonomousRed extends LinearOpMode {
     public void seeWhiteLine()
     {
 
-        while (((lightSensor.getLightDetected() + prevValLight)/2) < WHITE_THRESHOLD)
+        while (lightSensor.getLightDetected() < WHITE_THRESHOLD && opModeIsActive())
         {
-            prevValLight = lightSensor.getLightDetected();
             move(.2,.2);
             telemetry.addData("Light Level",  lightSensor.getLightDetected());
             telemetry.update();
@@ -254,7 +246,7 @@ public class AutonomousRed extends LinearOpMode {
 
     public void seeWhiteLineBack()
     {
-        while (lightSensor.getLightDetected() < WHITE_THRESHOLD)
+        while (lightSensor.getLightDetected() < WHITE_THRESHOLD && opModeIsActive())
         {
             move(-0.18,-0.18);
             telemetry.addData("Light Level",  lightSensor.getLightDetected());
@@ -272,21 +264,25 @@ public class AutonomousRed extends LinearOpMode {
 
     public void timedMove(double power, int milliseconds)
     {
-        move(power,power);
+        move(power,(power + 0.07));
         sleep(milliseconds);
         move(0,0);
     }
 
+
     public void analyzeBeacon()
     {
+        sleep(500);
         colorCcache = colorCreader.read(0x04, 1);
+        sleep(500);
 
-        if ((colorCcache[0] & 0xFF) > 7 && (colorCcache[0] & 0xFF) < 13) //IF RED
+        if ((colorCcache[0] & 0xFF) > 7 && (colorCcache[0] & 0xFF) < 13 && opModeIsActive()) //IF RED
         {
             colorCcache = colorCreader.read(0x04, 1);
             telemetry.addData("Color Number: ", colorCcache[0] & 0xFF);
             servoButtonRight.setPosition(0.76);
-            encoderDrive(1,2,2);
+            timedMove(0.2,700);
+            sleep(1000);
             servoButtonRight.setPosition(0.33);
         }
         else   //BLUE
@@ -294,7 +290,8 @@ public class AutonomousRed extends LinearOpMode {
             colorCcache = colorCreader.read(0x04, 1);
             telemetry.addData("Color Number: ", colorCcache[0] & 0xFF);
             servoButtonLeft.setPosition(0.10);
-            encoderDrive(1,2,2);
+            timedMove(0.2,700);
+            sleep(1000);
             servoButtonLeft.setPosition(0.53);
         }
     }
@@ -353,7 +350,7 @@ public class AutonomousRed extends LinearOpMode {
         telemetry.addData("Direction", -1 * (int) Math.signum(degrees));
         telemetry.update();
 
-        if(Math.abs(sensorGyro.getIntegratedZValue() - targetHeading) > 0 && count < 1)
+        if(Math.abs(sensorGyro.getIntegratedZValue() - targetHeading) > 0 && count < 1 && opModeIsActive())
         {
             //Recurse to correct turn
             turn(Math.abs(sensorGyro.getIntegratedZValue() - targetHeading), direction.equals("right") ? "left" : "right", .08, ++count);

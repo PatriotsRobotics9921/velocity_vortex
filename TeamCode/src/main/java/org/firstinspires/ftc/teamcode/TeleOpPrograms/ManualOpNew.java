@@ -28,7 +28,7 @@ public class ManualOpNew extends OpMode
     DcMotor motorShootLeft;
     DcMotor motorShootRight;
     DcMotor motorBelt;
-    DcMotor motorCollector;
+    //DcMotor motorCollector;
     DcMotor motorLift;
 
     //Servos
@@ -39,6 +39,7 @@ public class ManualOpNew extends OpMode
     Servo servoLiftAngle;
     Servo servoButtonLeft;
     Servo servoButtonRight;
+    Servo servoCollection;
 
 
     //Important Thresholds
@@ -66,7 +67,7 @@ public class ManualOpNew extends OpMode
         motorBelt = hardwareMap.dcMotor.get("motor belt");
         motorLift = hardwareMap.dcMotor.get("motor lift");
 
-        motorCollector = hardwareMap.dcMotor.get("motor collector");
+        //motorCollector = hardwareMap.dcMotor.get("motor collector");
 
         motorBackRight.setDirection(DcMotor.Direction.REVERSE);
         motorShootLeft.setDirection(DcMotor.Direction.REVERSE);
@@ -78,11 +79,13 @@ public class ManualOpNew extends OpMode
         //servoExtendCollectionRight =hardwareMap.servo.get("servo exr");
         servoLiftAngle = hardwareMap.servo.get("servo lift angle");
         servoLiftGate = hardwareMap.servo.get("servo lift gate");
+        servoCollection = hardwareMap.servo.get("servo collection");
 
         servoButtonLeft.setPosition(0.53);
         servoButtonRight.setPosition(0.33);
         servoLiftGate.setPosition(0.36);
         servoLiftAngle.setPosition(0.25);
+        servoCollection.setPosition(0.5);
 
     }
 
@@ -130,11 +133,14 @@ public class ManualOpNew extends OpMode
 
         if (gamepad2.a)
         {
-            motorCollector.setPower(0);
+            //motorCollector.setPower(0);
+            servoCollection.setPosition(0.5);
+
         }
         else if (gamepad2.b)
         {
-            motorCollector.setPower(1);
+            //motorCollector.setPower(1);
+            servoCollection.setPosition(1);
         }
 
         if(gamepad2.x)
