@@ -21,7 +21,7 @@ import com.qualcomm.robotcore.util.Range;
         X           X
       X  FL       FR  X
               X
-             XXX
+             XX
               X
       X  BL       BR  X
         X           X
